@@ -27,6 +27,8 @@ async fn main() {
     let mut spikes: Vec<Spike> = Vec::new();
     let mut next_spawn_x = 800.0;
     let mut score = 0;
+    let mut game_speed = 6.0;
+    let mut difficulty = 0.0;
 
     let floor_line_y = 400.0;
 
@@ -63,7 +65,9 @@ async fn main() {
                     spikes.clear();
                     next_spawn_x = 800.0;
                     score = 0;
-                    lvl_gen::spawn_next_chunk(&mut spikes, &mut next_spawn_x);
+                    game_speed = 6.0;
+                    difficulty = 0.0;
+                    lvl_gen::spawn_next_chunk(&mut spikes, &mut next_spawn_x, difficulty);
                     state = GameState::Playing;
                 }
             }
@@ -73,19 +77,23 @@ async fn main() {
 
                 // 2. Check if we need to generate more spikes ahead of the player
                 if spikes.is_empty() || spikes.last().unwrap().x < screen_width() + 200.0 {
-                    lvl_gen::spawn_next_chunk(&mut spikes, &mut next_spawn_x);
+                    lvl_gen::spawn_next_chunk(&mut spikes, &mut next_spawn_x, difficulty);
                 }
 
-                // 3. Move all active obstacles left across the screen
+                // 3. Move all active obstacles left across the screen with increasing speed
                 for spike in spikes.iter_mut() {
-                    spike.x -= 6.0; // Level speed
+                    spike.x -= game_speed;
                 }
 
-                // 4. Increment score based on passed spikes
+                // 4. Increment score based on passed spikes and update difficulty
                 for spike in spikes.iter() {
                     // Award 10 points when spike passes the player's X position
                     if spike.x < player.x && spike.x > player.x - 10.0 {
                         score += 10;
+                        // Increase difficulty every 100 points (every 10 spikes passed)
+                        difficulty = (score / 100) as f32 * 50.0;
+                        // Increase game speed: starts at 6.0, caps at 12.0
+                        game_speed = 6.0 + (difficulty / 100.0).min(6.0);
                     }
                 }
 
@@ -118,7 +126,7 @@ async fn main() {
                 // 8. Draw the player cube icon
                 player.draw(&assets.player_tex);
 
-                // 9. Draw score on screen during gameplay
+                // 9. Draw score and difficulty on screen during gameplay
                 draw_text_ex(
                     &format!("Score: {}", score),
                     10.0,
@@ -126,6 +134,18 @@ async fn main() {
                     TextParams {
                         font_size: 32,
                         color: WHITE,
+                        ..Default::default()
+                    },
+                );
+
+                let difficulty_level = (difficulty / 50.0) as i32 + 1;
+                draw_text_ex(
+                    &format!("Level: {}", difficulty_level),
+                    10.0,
+                    70.0,
+                    TextParams {
+                        font_size: 24,
+                        color: YELLOW,
                         ..Default::default()
                     },
                 );
@@ -146,7 +166,9 @@ async fn main() {
                     spikes.clear();
                     next_spawn_x = 800.0;
                     score = 0;
-                    lvl_gen::spawn_next_chunk(&mut spikes, &mut next_spawn_x);
+                    game_speed = 6.0;
+                    difficulty = 0.0;
+                    lvl_gen::spawn_next_chunk(&mut spikes, &mut next_spawn_x, difficulty);
                     state = GameState::Playing;
                 }
 
