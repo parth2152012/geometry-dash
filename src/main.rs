@@ -1,12 +1,11 @@
+// src/main.rs
+
 mod lvl_gen;
 mod obstacles;
 
-use lvl_gen::generate_random_chunk;
-use obstacles::Spike;
-
 use macroquad::prelude::*;
+use obstacles::{Spike, SpikeType};
 
-// --- CONFIGURATION CONSTANTS ---
 const GRAVITY: f32 = 1200.0;
 const JUMP_FORCE: f32 = -450.0;
 const FORWARD_SPEED: f32 = 300.0;
@@ -21,8 +20,15 @@ struct Player {
     is_grounded: bool,
 }
 
-#[macroquad::main("Geometry Dash Fixed Hitboxes")]
+#[macroquad::main("Geometry Dash Textured")]
 async fn main() {
+    // --- ASSET LOADING LAYER ---
+    // Safely parse textures out of your assets folder on initialization
+    let texture_bg = load_texture("assets/bg.png").await.unwrap();
+    let texture_player = load_texture("assets/player.png").await.unwrap();
+    let texture_spike_small = load_texture("assets/spike_small.png").await.unwrap();
+    let texture_spike_tall = load_texture("assets/spike_tall.png").await.unwrap();
+
     let mut player = Player {
         x: 100.0,
         y: GROUND_Y - CUBE_SIZE,
@@ -31,22 +37,16 @@ async fn main() {
         is_grounded: true,
     };
 
-    // Remove this too will go in lvl_gen
-
-    let mut spikes = vec![Spike::new(1000.0, GROUND_Y, 45.0, 50.0)];
-
+    let mut spikes: Vec<Spike> = Vec::new();
+    let mut next_spawn_x = 800.0;
     let mut game_over = false;
-    let mut next_spawn_x = 1000.0; // Start spawning the first chunks further down the track
 
     loop {
         // --- UPDATE LOOP ---
         if !game_over {
             let dt = get_frame_time();
-
-            // Constant forward movement
             player.x += FORWARD_SPEED * dt;
 
-            // Handle Input
             if (is_key_down(KeyCode::Space) || is_mouse_button_down(MouseButton::Left))
                 && player.is_grounded
             {
@@ -54,11 +54,9 @@ async fn main() {
                 player.is_grounded = false;
             }
 
-            // Apply gravity
             player.vy += GRAVITY * dt;
             player.y += player.vy * dt;
 
-            // Strict floor collision
             if player.y >= GROUND_Y - CUBE_SIZE {
                 player.y = GROUND_Y - CUBE_SIZE;
                 player.vy = 0.0;
@@ -66,14 +64,19 @@ async fn main() {
                 player.rotation = (player.rotation / 90.0).round() * 90.0;
             }
 
-            // Smooth rotation while in air
             if !player.is_grounded {
                 player.rotation += 360.0 * dt;
             }
 
-            // --- GEOMETRY DASH HITBOX LOGIC ---  lvl_gen
+            if next_spawn_x - player.x < 1000.0 {
+                let (new_spikes, updated_x) =
+                    lvl_gen::generate_random_chunk(next_spawn_x, GROUND_Y);
+                spikes.extend(new_spikes);
+                next_spawn_x = updated_x;
+            }
+
+            // --- COLLISION MATRIX ---
             for spike in &spikes {
-                // Sizing matching the nested red hitboxes from the reference image
                 let hb_w = spike.w * 0.35;
                 let hb_h = spike.h * 0.70;
                 let hb_x = spike.x + (spike.w - hb_w) / 2.0;
@@ -88,6 +91,9 @@ async fn main() {
                     game_over = true;
                 }
             }
+
+            let camera_offset_x = player.x - 150.0;
+            spikes.retain(|spike| spike.x + spike.w > camera_offset_x);
         } else {
             if is_key_pressed(KeyCode::Space) {
                 player.x = 100.0;
@@ -95,61 +101,82 @@ async fn main() {
                 player.vy = 0.0;
                 player.rotation = 0.0;
                 player.is_grounded = true;
+                spikes.clear();
+                next_spawn_x = 800.0;
                 game_over = false;
             }
         }
 
-        if next_spawn_x - player.x < 800.0 {
-            // 1. Call your function to get new spikes and the advanced cursor coordinate
-            let (new_spikes, updated_x) = lvl_gen::generate_random_chunk(next_spawn_x, GROUND_Y);
-
-            // 2. Append the new spikes to your main game loop array
-            spikes.extend(new_spikes);
-
-            // 3. Update your tracking pen so it never spawns backwards!
-            next_spawn_x = updated_x;
-        }
-
-        // --- RENDER LOOP ---
+        // --- RENDER LOOP (BACK-TO-FRONT SORTING) ---
         clear_background(BLACK);
-
         let camera_offset_x = player.x - 150.0;
 
-        // Draw Ground Floor Line
-        draw_line(0.0, GROUND_Y, screen_width(), GROUND_Y, 4.0, WHITE);
+        // 1. Draw Parallax Scrolling Background
+        let bg_scroll_speed = 0.15;
+        let bg_x = -(camera_offset_x * bg_scroll_speed) % screen_width();
 
-        // Draw Spikes
-        for spike in &spikes {
-            draw_triangle(
-                vec2(spike.x - camera_offset_x, spike.y),
-                vec2(
-                    spike.x + (spike.w / 2.0) - camera_offset_x,
-                    spike.y - spike.h,
-                ),
-                vec2(spike.x + spike.w - camera_offset_x, spike.y),
-                RED,
-            );
-        }
-
-        // --- NATIVE DRAWING FIXED PIVOT ---
-        // Find the absolute center of our block in screen-space
-        let screen_x = player.x - camera_offset_x;
-        let center_x = screen_x + (CUBE_SIZE / 2.0);
-        let center_y = player.y + (CUBE_SIZE / 2.0);
-
-        draw_rectangle_ex(
-            center_x,
-            center_y,
-            CUBE_SIZE,
-            CUBE_SIZE,
-            DrawRectangleParams {
-                offset: vec2(0.5, 0.5), // Forces rotation to pivot from center
-                rotation: player.rotation.to_radians(),
-                color: BLUE,
+        draw_texture_ex(
+            &texture_bg,
+            bg_x,
+            0.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(screen_width(), screen_height())),
+                ..Default::default()
+            },
+        );
+        draw_texture_ex(
+            &texture_bg,
+            bg_x + screen_width(),
+            0.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(screen_width(), screen_height())),
+                ..Default::default()
             },
         );
 
-        // Draw UI Elements
+        // 2. Draw Floor Horizon
+        draw_line(0.0, GROUND_Y, screen_width(), GROUND_Y, 4.0, WHITE);
+
+        // 3. Draw Textured Spikes
+        for spike in &spikes {
+            // Pick appropriate texture binding pointer based on chunk variation enum flags
+            let current_texture = match spike.variant {
+                SpikeType::Small => &texture_spike_small,
+                SpikeType::Tall => &texture_spike_tall,
+            };
+
+            draw_texture_ex(
+                current_texture,
+                spike.x - camera_offset_x,
+                spike.y - spike.h, // Textures render down from Top-Left, so subtract height to seat it on the floor
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(spike.w, spike.h)),
+                    ..Default::default()
+                },
+            );
+        }
+
+        // 4. Draw Animated Rotated Player Sprite Face
+        let screen_x = player.x - camera_offset_x;
+
+        draw_texture_ex(
+            &texture_player,
+            screen_x,
+            player.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(CUBE_SIZE, CUBE_SIZE)),
+                rotation: player.rotation.to_radians(),
+                // Centers pivot transform framework around the texture frame center point
+                pivot: Some(vec2(screen_x + CUBE_SIZE / 2.0, player.y + CUBE_SIZE / 2.0)),
+                ..Default::default()
+            },
+        );
+
+        // 5. Draw UI Font Elements
         if game_over {
             draw_text(
                 "CRASHED! Press SPACE to Restart",

@@ -1,5 +1,5 @@
 // Inside lvl_gen.rs
-use crate::obstacles::Spike;
+use crate::obstacles::{Spike, SpikeType};
 use rand::{Rng, RngExt};
 
 pub fn generate_random_chunk(current_spawn_x: f32, ground_y: f32) -> (Vec<Spike>, f32) {
@@ -17,8 +17,11 @@ pub fn generate_random_chunk(current_spawn_x: f32, ground_y: f32) -> (Vec<Spike>
         // 120 to 300 pixels gives the player enough room to jump or land safely
         local_x += rng.random_range(120.0..300.0);
 
-        // Spawn the spike at the newly advanced coordinate track
-        chunk_spikes.push(Spike::new(local_x, ground_y, 40.0, 40.0));
+        if rng.random_bool(0.5) {
+            chunk_spikes.push(Spike::new(local_x, ground_y, 40.0, 30.0, SpikeType::Small));
+        } else {
+            chunk_spikes.push(Spike::new(local_x, ground_y, 40.0, 55.0, SpikeType::Tall));
+        }
     }
 
     // Crucial step: Add a final "buffer gap" at the end of the chunk
