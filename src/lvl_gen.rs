@@ -1,15 +1,15 @@
 use crate::obstacles::{Spike, SpikeType};
-use rand::RngExt;
+use rand::Rng;
 
 pub fn spawn_next_chunk(spikes: &mut Vec<Spike>, spawn_x: &mut f32) {
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
 
     // Create random layout gaps between hazards
     for _ in 0..3 {
-        let gap = rng.random_range(200.0..400.0);
+        let gap = rng.gen_range(200.0..400.0);
         *spawn_x += gap;
 
-        let hazard_type = if rng.random_bool(0.5) {
+        let hazard_type = if rng.gen_bool(0.5) {
             SpikeType::Small
         } else {
             SpikeType::Tall
