@@ -74,3 +74,61 @@ pub fn draw_start_screen(assets: &GameAssets, skin: &Skin, state: &mut GameState
 
     root_ui().pop_skin();
 }
+
+pub fn draw_game_over_screen(assets: &GameAssets, skin: &Skin, state: &mut GameState, score: i32) {
+    let win_w = 600.0;
+    let win_h = 400.0;
+    let win_pos = vec2(
+        (screen_width() - win_w) / 2.0,
+        (screen_height() - win_h) / 2.0,
+    );
+
+    // 1. Draw "GAME OVER" text centered
+    let game_over_text = "GAME OVER";
+    let text_size = 80.0;
+    let text_width = measure_text(game_over_text, None, text_size as u16, 1.0).width;
+    draw_text_ex(
+        game_over_text,
+        (screen_width() - text_width) / 2.0,
+        win_pos.y + 80.0,
+        TextParams {
+            font_size: text_size as u16,
+            color: RED,
+            ..Default::default()
+        },
+    );
+
+    // 2. Draw score display
+    let score_text = format!("Score: {}", score);
+    let score_text_size = 40.0;
+    let score_width = measure_text(&score_text, None, score_text_size as u16, 1.0).width;
+    draw_text_ex(
+        &score_text,
+        (screen_width() - score_width) / 2.0,
+        win_pos.y + 160.0,
+        TextParams {
+            font_size: score_text_size as u16,
+            color: WHITE,
+            ..Default::default()
+        },
+    );
+
+    // 3. Draw restart button UI
+    root_ui().push_skin(skin);
+
+    widgets::Window::new(hash!("game_over_menu"), win_pos, vec2(win_w, win_h))
+        .movable(false)
+        .titlebar(false)
+        .ui(&mut *root_ui(), |ui| {
+            let restart_clicked = widgets::Button::new("")
+                .size(vec2(120.0, 120.0))
+                .position(vec2(240.0, 220.0))
+                .ui(ui);
+
+            if restart_clicked {
+                *state = GameState::Playing;
+            }
+        });
+
+    root_ui().pop_skin();
+}
