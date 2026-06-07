@@ -1,5 +1,3 @@
-// src/obstacles.rs
-
 #[derive(Clone, Debug)]
 pub enum SpikeType {
     Small,

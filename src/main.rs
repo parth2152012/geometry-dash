@@ -4,8 +4,9 @@ mod lvl_gen;
 mod obstacles;
 
 use macroquad::{
+    color,
     prelude::*,
-    ui::{self, root_ui},
+    ui::{Skin, hash, root_ui, widgets::Window},
 };
 use obstacles::{Spike, SpikeType};
 
@@ -37,6 +38,13 @@ async fn main() {
     let texture_player = load_texture("assets/player.png").await.unwrap();
     let texture_spike_small = load_texture("assets/spike_small.png").await.unwrap();
     let texture_spike_tall = load_texture("assets/spike_tall.png").await.unwrap();
+    let mut custom_font = load_ttf_font("assets/geometry-dash-font.ttf")
+        .await
+        .unwrap();
+    let play_btn = load_image("assets/play_btn.png").await.unwrap();
+
+    texture_bg.set_filter(FilterMode::Nearest);
+    custom_font.set_filter(FilterMode::Nearest);
 
     let mut player = Player {
         x: 100.,
@@ -51,43 +59,99 @@ async fn main() {
     let mut game_over = false;
     let mut state = GameState::StartScreen;
 
+    let ui_theme_skin: Skin = {
+        // Keep your label_style and button_style exactly as they are now!
+        let label_style = root_ui()
+            .style_builder()
+            .with_font(&custom_font)
+            .unwrap()
+            .font_size(50)
+            .text_color(Color {
+                r: (159.),
+                g: (255.),
+                b: (0.),
+                a: (0.66),
+            })
+            .build();
+
+        let button_style = root_ui()
+            .style_builder()
+            .background(play_btn.clone()) // Normal state image
+            .background_hovered(play_btn.clone()) // Hovered state image
+            .background_clicked(play_btn.clone()) // Pressed down state image
+            .text_color(BLANK) // Hide any text overlays
+            .build();
+
+        // Add this new style layer block to clear out window background visuals:
+        let window_style = root_ui()
+            .style_builder()
+            .background_margin(macroquad::math::RectOffset::new(0.0, 0.0, 0.0, 0.0))
+            .margin(macroquad::math::RectOffset::new(0.0, 0.0, 0.0, 0.0))
+            .text_color(BLANK) // Hides the standard top text string header title
+            .color(BLANK) // Turns the solid inner window background box invisible
+            .color_clicked(BLANK)
+            .color_hovered(BLANK)
+            .build();
+
+        Skin {
+            label_style,
+            button_style,
+            window_style, // <-- Inject your clean invisible canvas profile layer here!
+            ..root_ui().default_skin()
+        }
+    };
+
     loop {
+        clear_background(DARKGRAY);
+
+        // ALWAYS draw background assets first so they render under UI layers!
+        draw_texture_ex(
+            &texture_bg,
+            0.0,
+            0.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(screen_width(), screen_height())),
+                ..Default::default()
+            },
+        );
+
         match state {
             GameState::StartScreen => {
-                // Centered text
-                let title_text = "Geometry Dash Clone";
-                let font_size = 50.;
-                let text_size = measure_text(title_text, None, font_size as _, 1.);
+                // 1. Enlarge container canvas size so text strings do not wrap or clip off edges
+                let window_width = 600.0;
+                let window_height = 300.0;
+                let window_size = vec2(window_width, window_height);
 
-                draw_text(
-                    title_text,
-                    screen_width() / 2. - text_size.width / 2.,
-                    screen_height() / 2. - 50.,
-                    font_size,
-                    WHITE,
+                let window_pos = vec2(
+                    (screen_width() - window_width) / 2.0,
+                    (screen_height() - window_height) / 2.0,
                 );
 
-                ui::root_ui().label(None, "this is a label");
+                root_ui().push_skin(&ui_theme_skin);
 
-                // Flashing "Press Enter" prompt
-                let time = get_time();
-                if (time.sin() * 5.) > 0. {
-                    let prompt = "Press ENTER to Start";
-                    let prompt_size = measure_text(prompt, None, 30, 1.);
-                    draw_text(
-                        prompt,
-                        screen_width() / 2.0 - prompt_size.width / 2.0,
-                        screen_height() / 2.0 + 50.0,
-                        30.0,
-                        YELLOW,
-                    );
-                }
+                Window::new(macroquad::ui::hash!("main_menu"), window_pos, window_size)
+                    .movable(false)
+                    .titlebar(false)
+                    .ui(&mut *root_ui(), |ui| {
+                        // Keep your centered title text label
+                        ui.label(vec2(20.0, 40.0), "GEOMETRY DASH");
 
-                // Transition state
-                if is_key_pressed(KeyCode::Enter) {
-                    state = GameState::Playing;
-                }
+                        // Use the structured widget builder to force a custom width and height
+                        let play_clicked = macroquad::ui::widgets::Button::new("")
+                            .size(vec2(120.0, 120.0)) // <-- Forces the button to be 120x120 pixels!
+                            .position(vec2(220.0, 140.0))
+                            .ui(ui); // Passes the UI context to render it
+
+                        // Process the interaction state condition
+                        if play_clicked {
+                            state = GameState::Playing;
+                        }
+                    });
+
+                root_ui().pop_skin();
             }
+
             GameState::Playing => {
                 // --- UPDATE LOOP ---
                 if !game_over {
@@ -115,7 +179,7 @@ async fn main() {
                         player.rotation += 360.0 * dt;
                     }
 
-                    if next_spawn_x - player.x < 1000.0 {
+                    if next_spawn_x - player.x < 1500.0 {
                         let (new_spikes, updated_x) =
                             lvl_gen::generate_random_chunk(next_spawn_x, GROUND_Y);
                         spikes.extend(new_spikes);
@@ -124,8 +188,8 @@ async fn main() {
 
                     // --- COLLISION MATRIX ---
                     for spike in &spikes {
-                        let hb_w = spike.w * 0.35;
-                        let hb_h = spike.h * 0.70;
+                        let hb_w = spike.w * 0.20;
+                        let hb_h = spike.h * 0.50;
                         let hb_x = spike.x + (spike.w - hb_w) / 2.0;
                         let hb_y = spike.y - hb_h;
 
@@ -153,9 +217,6 @@ async fn main() {
                         game_over = false;
                     }
                 }
-
-                // --- RENDER LOOP (BACK-TO-FRONT SORTING) ---
-                clear_background(BLACK);
                 let camera_offset_x = player.x - 150.0;
 
                 // 1. Draw Parallax Scrolling Background

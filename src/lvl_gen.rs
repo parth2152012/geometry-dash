@@ -1,4 +1,3 @@
-// Inside lvl_gen.rs
 use crate::obstacles::{Spike, SpikeType};
 use rand::{Rng, RngExt};
 
