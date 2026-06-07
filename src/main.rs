@@ -1,6 +1,7 @@
 mod lvl_gen;
 mod obstacles;
 
+use lvl_gen::generate_random_chunk;
 use obstacles::Spike;
 
 use macroquad::prelude::*;
@@ -32,7 +33,7 @@ async fn main() {
 
     // Remove this too will go in lvl_gen
 
-    let spikes = vec![Spike::new(1000.0, GROUND_Y, 45.0, 50.0)];
+    let mut spikes = vec![Spike::new(1000.0, GROUND_Y, 45.0, 50.0)];
 
     let mut game_over = false;
     let mut next_spawn_x = 1000.0; // Start spawning the first chunks further down the track
