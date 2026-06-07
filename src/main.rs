@@ -3,14 +3,17 @@
 mod lvl_gen;
 mod obstacles;
 
-use macroquad::prelude::*;
+use macroquad::{
+    prelude::*,
+    ui::{self, root_ui},
+};
 use obstacles::{Spike, SpikeType};
 
-const GRAVITY: f32 = 1200.0;
-const JUMP_FORCE: f32 = -450.0;
-const FORWARD_SPEED: f32 = 300.0;
-const CUBE_SIZE: f32 = 40.0;
-const GROUND_Y: f32 = 400.0;
+const GRAVITY: f32 = 1200.;
+const JUMP_FORCE: f32 = -450.;
+const FORWARD_SPEED: f32 = 300.;
+const CUBE_SIZE: f32 = 40.;
+const GROUND_Y: f32 = 400.;
 
 #[derive(PartialEq)]
 enum GameState {
@@ -36,15 +39,15 @@ async fn main() {
     let texture_spike_tall = load_texture("assets/spike_tall.png").await.unwrap();
 
     let mut player = Player {
-        x: 100.0,
+        x: 100.,
         y: GROUND_Y - CUBE_SIZE,
-        vy: 0.0,
-        rotation: 0.0,
+        vy: 0.,
+        rotation: 0.,
         is_grounded: true,
     };
 
     let mut spikes: Vec<Spike> = Vec::new();
-    let mut next_spawn_x = 800.0;
+    let mut next_spawn_x = 800.;
     let mut game_over = false;
     let mut state = GameState::StartScreen;
 
@@ -52,23 +55,25 @@ async fn main() {
         match state {
             GameState::StartScreen => {
                 // Centered text
-                let title_text = "MY AWESOME GAME";
-                let font_size = 50.0;
-                let text_size = measure_text(title_text, None, font_size as _, 1.0);
+                let title_text = "Geometry Dash Clone";
+                let font_size = 50.;
+                let text_size = measure_text(title_text, None, font_size as _, 1.);
 
                 draw_text(
                     title_text,
-                    screen_width() / 2.0 - text_size.width / 2.0,
-                    screen_height() / 2.0 - 50.0,
+                    screen_width() / 2. - text_size.width / 2.,
+                    screen_height() / 2. - 50.,
                     font_size,
                     WHITE,
                 );
 
+                ui::root_ui().label(None, "this is a label");
+
                 // Flashing "Press Enter" prompt
                 let time = get_time();
-                if (time.sin() * 5.0) > 0.0 {
+                if (time.sin() * 5.) > 0. {
                     let prompt = "Press ENTER to Start";
-                    let prompt_size = measure_text(prompt, None, 30, 1.0);
+                    let prompt_size = measure_text(prompt, None, 30, 1.);
                     draw_text(
                         prompt,
                         screen_width() / 2.0 - prompt_size.width / 2.0,
