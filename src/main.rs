@@ -26,6 +26,7 @@ async fn main() {
     let mut player = Player::new();
     let mut spikes: Vec<Spike> = Vec::new();
     let mut next_spawn_x = 800.0;
+    let mut score = 0;
 
     let floor_line_y = 400.0;
 
@@ -44,8 +45,10 @@ async fn main() {
             },
         );
 
-        // Render a solid block platform track line across the screen viewport base layout
-        draw_line(0.0, floor_line_y, screen_width(), floor_line_y, 4.0, WHITE);
+        // Only render floor line during gameplay (not on menus)
+        if state == GameState::Playing {
+            draw_line(0.0, floor_line_y, screen_width(), floor_line_y, 4.0, WHITE);
+        }
 
         match state {
             GameState::StartScreen => {
@@ -59,6 +62,7 @@ async fn main() {
                     player = Player::new();
                     spikes.clear();
                     next_spawn_x = 800.0;
+                    score = 0;
                     lvl_gen::spawn_next_chunk(&mut spikes, &mut next_spawn_x);
                     state = GameState::Playing;
                 }
@@ -77,7 +81,15 @@ async fn main() {
                     spike.x -= 6.0; // Level speed
                 }
 
-                // 4. Check for crashes between the player and any spike hazard
+                // 4. Increment score based on passed spikes
+                for spike in spikes.iter() {
+                    // Award 10 points when spike passes the player's X position
+                    if spike.x < player.x && spike.x > player.x - 10.0 {
+                        score += 10;
+                    }
+                }
+
+                // 5. Check for crashes between the player and any spike hazard
                 let player_rect = player.get_rect();
                 for spike in spikes.iter() {
                     let spike_rect = Rect::new(
@@ -87,26 +99,58 @@ async fn main() {
                         spike.height - 5.0,
                     );
 
-                    // FIXED: Using Macroquad's native overlaps() method for clean collision calculation
+                    // Using Macroquad's native overlaps() method for clean collision calculation
                     if player_rect.overlaps(&spike_rect) {
-                        // Crash! Send the block back directly to the menu loop system layer
-                        state = GameState::StartScreen;
+                        // Crash! Send the player to game over screen
+                        state = GameState::GameOver;
                         break;
                     }
                 }
 
-                // 5. Clean up old offscreen obstacles to prevent memory leaks
+                // 6. Clean up old offscreen obstacles to prevent memory leaks
                 spikes.retain(|s| s.x > -100.0);
 
-                // 6. Draw all active spikes
+                // 7. Draw all active spikes
                 for spike in spikes.iter() {
                     spike.draw(&assets.spike_small_tex, &assets.spike_tall_tex);
                 }
 
-                // 7. Draw the player cube icon
+                // 8. Draw the player cube icon
                 player.draw(&assets.player_tex);
 
-                // 8. Press ESC to return to the menu manually
+                // 9. Draw score on screen during gameplay
+                draw_text_ex(
+                    &format!("Score: {}", score),
+                    10.0,
+                    30.0,
+                    TextParams {
+                        font_size: 32,
+                        color: WHITE,
+                        ..Default::default()
+                    },
+                );
+
+                // 10. Press ESC to return to the menu manually
+                if is_key_pressed(KeyCode::Escape) {
+                    state = GameState::StartScreen;
+                }
+            }
+            GameState::GameOver => {
+                // Display game over screen with restart button
+                let mut current_state = state;
+                ui::draw_game_over_screen(&assets, &menu_skin, &mut current_state, score);
+
+                // If user clicks restart button, reset the game
+                if current_state == GameState::Playing {
+                    player = Player::new();
+                    spikes.clear();
+                    next_spawn_x = 800.0;
+                    score = 0;
+                    lvl_gen::spawn_next_chunk(&mut spikes, &mut next_spawn_x);
+                    state = GameState::Playing;
+                }
+
+                // Allow pressing ESC to return to start menu
                 if is_key_pressed(KeyCode::Escape) {
                     state = GameState::StartScreen;
                 }
