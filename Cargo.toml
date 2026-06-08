@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 macroquad = "0.4.15"
 rand = "0.8"
+
+# Add this line right below your other dependencies:
+getrandom = { version = "0.2", features = ["js"] }
