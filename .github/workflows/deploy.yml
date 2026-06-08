@@ -23,7 +23,8 @@ jobs:
 
       - name: Install wasm-bindgen CLI
         run: |
-          cargo install wasm-bindgen-cli --version 0.2.92
+          # Exactly matches your project's schema version to stop the error
+          cargo install wasm-bindgen-cli --version 0.2.122
 
       - name: Build WebAssembly Target
         env:
@@ -35,13 +36,10 @@ jobs:
         run: |
           mkdir dist
           
-          # Generate the JavaScript bindings using 0.2.92
+          # Generate the JavaScript bindings cleanly into the dist folder
           wasm-bindgen target/wasm32-unknown-unknown/release/geometry-dash.wasm --out-dir dist --target web --no-typescript
           
-          # Rename the generated wasm file to match what the custom HTML expects
-          mv dist/geometry-dash_bg.wasm dist/geometry_dash.wasm
-          
-          # Copy assets if they exist
+          # Copy assets folder if it exists
           if [ -d "assets" ]; then cp -r assets dist/; fi
 
       - name: Create index.html
@@ -78,12 +76,12 @@ jobs:
                   import init from './geometry-dash.js';
                   
                   async function run() {
-                      // Bridge macroquad's layout environment directly into the bindgen placeholder mapping
-                      const wasm = await init('./geometry_dash.js');
+                      // Initialize the bindgen bindings module
+                      await init();
                       
-                      // Safely launch the miniquad runtime loop using the compiled modules
+                      // Safely hand over control to miniquad's engine loop using the built background binary
                       if (typeof load === 'function') {
-                          load('./geometry_dash.wasm');
+                          load('./geometry-dash_bg.wasm');
                       }
                   }
                   run();
