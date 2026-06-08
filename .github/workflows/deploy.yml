@@ -64,8 +64,64 @@ jobs:
           <body>
               <canvas id="glcanvas"></canvas>
               
+              <script>
+                  // Deep containment patch to shield macroquad from rogue wasm-bindgen dependencies
+                  const patchImports = (importObject) => {
+                      if (!importObject) importObject = {};
+                      
+                      // Infinite dummy proxy function to catch unexpected function calls or property accesses
+                      const createDummy = () => {
+                          const f = function() { return 0; };
+                          return new Proxy(f, {
+                              get: () => createDummy(),
+                              construct: () => createDummy()
+                          });
+                      };
+
+                      // Resolve missing root-level structural tables and transforms
+                      const rootPlaceholders = [
+                          '__wbindgen_placeholder__',
+                          '__wbindgen_externref_xform__',
+                          '__wbindgen_externref_table__'
+                      ];
+                      
+                      rootPlaceholders.forEach(key => {
+                          if (!importObject[key]) {
+                              importObject[key] = new Proxy({}, {
+                                  get: () => createDummy()
+                              });
+                          }
+                      });
+
+                      // Intercept the environment object to satisfy missing crypto, node, or execution functions
+                      if (importObject.env) {
+                          importObject.env = new Proxy(importObject.env, {
+                              get: (target, prop) => {
+                                  if (prop in target) return target[prop];
+                                  return createDummy();
+                              }
+                          });
+                      }
+                      return importObject;
+                  };
+
+                  // Globally override the WebAssembly instantiation handlers
+                  const oldInstantiate = WebAssembly.instantiate;
+                  WebAssembly.instantiate = function(buffer, importObject) {
+                      return oldInstantiate(buffer, patchImports(importObject));
+                  };
+
+                  if (WebAssembly.instantiateStreaming) {
+                      const oldStreaming = WebAssembly.instantiateStreaming;
+                      WebAssembly.instantiateStreaming = function(source, importObject) {
+                          return oldStreaming(source, patchImports(importObject));
+                      };
+                  }
+              </script>
+
               <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
               <script>
+                  // Boot raw binary directly via macroquad engine loader
                   load("./geometry_dash.wasm");
               </script>
           </body>
