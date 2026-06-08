@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+nme: Deploy to GitHub Pages
 
 on:
   push:
@@ -83,13 +83,24 @@ jobs:
                   import init from './geometry-dash.js';
                   
                   async function run() {
-                      // Initialize the bindgen bindings module
-                      await init();
+                      // We grab Macroquad's environment functions from the global scope
+                      // and pass them explicitly into the bindgen import object
+                      const importObject = {
+                          env: {
+                              ...window.wasm_exports,
+                              init_webgl: window.init_webgl,
+                              console_log: window.console_log,
+                              setup_canvas_size: window.setup_canvas_size,
+                              canvas_width: window.canvas_width,
+                              canvas_height: window.canvas_height,
+                              dpi_scale: window.dpi_scale,
+                              run_animation_loop: window.run_animation_loop,
+                              fs_load_file: window.fs_load_file
+                          }
+                      };
                       
-                      // Safely hand over control to miniquad's engine loop
-                      if (typeof load === 'function') {
-                          load('./geometry-dash_bg.wasm');
-                      }
+                      // Initialize the bindgen module with our custom combined import table
+                      await init('./geometry-dash_bg.wasm', importObject);
                   }
                   run();
               </script>
