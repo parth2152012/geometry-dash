@@ -24,24 +24,12 @@
     <canvas id="glcanvas"></canvas>
     
     <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
-    
-    <script src="./geometry-dash.js"></script>
-    
     <script>
-        // Since we used no-modules, wasm_bindgen is exposed globally!
-        // We initialize it, and then instantly hand off execution to Macroquad.
-        const { wasm_bindgen } = window;
+        // Inject basic dummy hooks to appease dependencies relying on wasm-bindgen structures
+        window.plat_dummy = function() {};
         
-        async function run() {
-            // Initialize the rand/getrandom window hooks
-            await wasm_bindgen('./geometry-dash_bg.wasm');
-            
-            // Safely boot the Macroquad game canvas loop
-            if (typeof load === 'function') {
-                load('./geometry-dash_bg.wasm');
-            }
-        }
-        run();
+        // Boot raw binary directly via macroquad engine loader
+        load("./geometry_dash.wasm");
     </script>
 </body>
 </html>
