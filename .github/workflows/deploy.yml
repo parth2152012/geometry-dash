@@ -21,8 +21,11 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      - name: Install wasm-bindgen CLI
+        run: |
+          cargo install wasm-bindgen-cli --version 0.2.92
+
       - name: Build WebAssembly Target
-        # This tells the linker to build the raw binary even if the JS functions aren't here yet
         env:
           RUSTFLAGS: "-C link-arg=--allow-undefined"
         run: |
@@ -32,10 +35,13 @@ jobs:
         run: |
           mkdir dist
           
-          # Copy the pure, raw wasm file straight to our web folder
-          cp target/wasm32-unknown-unknown/release/geometry-dash.wasm dist/geometry_dash.wasm
+          # Generate the JavaScript bindings using 0.2.92
+          wasm-bindgen target/wasm32-unknown-unknown/release/geometry-dash.wasm --out-dir dist --target web --no-typescript
           
-          # If your game uses an assets folder, copy it into dist
+          # Rename the generated wasm file to match what the custom HTML expects
+          mv dist/geometry-dash_bg.wasm dist/geometry_dash.wasm
+          
+          # Copy assets if they exist
           if [ -d "assets" ]; then cp -r assets dist/; fi
 
       - name: Create index.html
@@ -65,10 +71,22 @@ jobs:
           </head>
           <body>
               <canvas id="glcanvas"></canvas>
+              
               <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
-              <script>
-                  // Loads the raw wasm directly using the bundle runner
-                  load("geometry_dash.wasm");
+              
+              <script type="module">
+                  import init from './geometry-dash.js';
+                  
+                  async function run() {
+                      // Bridge macroquad's layout environment directly into the bindgen placeholder mapping
+                      const wasm = await init('./geometry_dash.js');
+                      
+                      // Safely launch the miniquad runtime loop using the compiled modules
+                      if (typeof load === 'function') {
+                          load('./geometry_dash.wasm');
+                      }
+                  }
+                  run();
               </script>
           </body>
           </html>
