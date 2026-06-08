@@ -19,6 +19,14 @@
             display: block;
         }
     </style>
+    
+    <script type="importmap">
+    {
+      "imports": {
+        "env": "./geometry-dash.js"
+      }
+    }
+    </script>
 </head>
 <body>
     <canvas id="glcanvas"></canvas>
@@ -32,7 +40,7 @@
             // Initialize the bindgen bindings module
             await init();
             
-            // Safely hand over control to miniquad's engine loop using the built background binary
+            // Safely hand over control to miniquad's engine loop
             if (typeof load === 'function') {
                 load('./geometry-dash_bg.wasm');
             }
