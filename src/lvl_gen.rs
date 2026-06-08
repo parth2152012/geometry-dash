@@ -1,8 +1,6 @@
 use crate::obstacles::{Spike, SpikeType};
-use rand::Rng;
 
 pub fn spawn_next_chunk(spikes: &mut Vec<Spike>, spawn_x: &mut f32, difficulty: f32) {
-    let mut rng = rand::thread_rng();
     let floor_line_y = 400.0;
 
     // Difficulty scaling:
@@ -18,10 +16,12 @@ pub fn spawn_next_chunk(spikes: &mut Vec<Spike>, spawn_x: &mut f32, difficulty: 
 
     // Create random layout gaps between hazards
     for _ in 0..spike_count {
-        let gap = rng.gen_range(gap_min..gap_max);
+        // Macroquad's gen_range takes commas (min, max) instead of a range expression (min..max)
+        let gap = macroquad::rand::gen_range(gap_min, gap_max);
         *spawn_x += gap;
 
-        let hazard_type = if rng.gen_bool(0.5) {
+        // Replaced rng.gen_bool(0.5) with a 50% float comparison
+        let hazard_type = if macroquad::rand::gen_range(0.0, 1.0) < 0.5 {
             SpikeType::Small
         } else {
             SpikeType::Tall
