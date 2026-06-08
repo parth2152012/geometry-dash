@@ -30,8 +30,7 @@ jobs:
       - name: Prepare Web Directory
         run: |
           mkdir dist
-          
-          # Move the raw compiled binary straight into the deployment folder
+          # Copy the raw compiled binary straight into the deployment folder
           cp target/wasm32-unknown-unknown/release/geometry-dash.wasm dist/geometry_dash.wasm
           
           # Copy assets if they exist
@@ -65,11 +64,37 @@ jobs:
           <body>
               <canvas id="glcanvas"></canvas>
               
+              <script>
+                  // Intercept WebAssembly instantiation to dynamically mock out wasm-bindgen's placeholders
+                  // This keeps the pipeline native, fast, and safe from missing symbol crashes
+                  const injectPlaceholders = (importObject) => {
+                      if (!importObject) importObject = {};
+                      importObject.__wbindgen_placeholder__ = new Proxy({}, {
+                          get: (target, prop) => {
+                              return (...args) => {
+                                  console.warn(`wasm-bindgen placeholder mocked call: ${String(prop)}`, args);
+                                  return 0;
+                              };
+                          }
+                      });
+                      return importObject;
+                  };
+
+                  const oldInstantiate = WebAssembly.instantiate;
+                  WebAssembly.instantiate = function(buffer, importObject) {
+                      return oldInstantiate(buffer, injectPlaceholders(importObject));
+                  };
+
+                  if (WebAssembly.instantiateStreaming) {
+                      const oldStreaming = WebAssembly.instantiateStreaming;
+                      WebAssembly.instantiateStreaming = function(source, importObject) {
+                          return oldStreaming(source, injectPlaceholders(importObject));
+                      };
+                  }
+              </script>
+
               <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
               <script>
-                  // Inject basic dummy hooks to appease dependencies relying on wasm-bindgen structures
-                  window.plat_dummy = function() {};
-                  
                   // Boot raw binary directly via macroquad engine loader
                   load("./geometry_dash.wasm");
               </script>
