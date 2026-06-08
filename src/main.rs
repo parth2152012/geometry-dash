@@ -1,3 +1,6 @@
+#[cfg(target_arch = "wasm32")]
+extern crate macroquad;
+
 use macroquad::prelude::*;
 
 // Declare and structure all separate file components in project scope
@@ -12,6 +15,16 @@ use assets::GameAssets;
 use obstacles::Spike;
 use player::Player;
 use state::GameState;
+
+#[cfg(target_arch = "wasm32")]
+#[no_mangle]
+pub unsafe extern "C" fn __getrandom_v02_custom(dest: *mut u8, len: usize) -> i32 {
+    let slice = std::slice::from_raw_parts_mut(dest, len);
+    for byte in slice.iter_mut() {
+        *byte = (macroquad::rand::rand() & 0xFF) as u8;
+    }
+    0 // Returns 0 to indicate success
+}
 
 #[macroquad::main("Geometry Dash Complete")]
 async fn main() {

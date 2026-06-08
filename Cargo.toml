@@ -6,11 +6,3 @@ edition = "2021"
 [dependencies]
 macroquad = "0.4.15"
 rand = "0.8"
-
-[lib]
-crate-type = ["cdylib"]
-
-[profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
