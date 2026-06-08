@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main # Change this to 'master' if your default branch uses that name
+      - main # Change this to 'master' if your default branch is named master
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Build WebAssembly Target
-        # Adding the RUSTFLAGS tells the linker to allow these specific macroquad/miniquad JS symbols
+        # Passes the flag allowing the linker to build despite missing web-browser JS symbols
         env:
           RUSTFLAGS: "-C link-arg=--allow-undefined"
         run: |
@@ -32,10 +32,10 @@ jobs:
         run: |
           mkdir dist
           
-          # Move the compiled raw wasm file directly into the deployment directory
-          cp target/wasm32-unknown-unknown/release/geometry_dash.wasm dist/geometry_dash.wasm
+          # Copies the hyphenated target file and names it with an underscore for the HTML loader
+          cp target/wasm32-unknown-unknown/release/geometry-dash.wasm dist/geometry_dash.wasm
           
-          # If your game uses an assets folder (images, audio, etc.), copy it into dist
+          # Copies your asset folder (sprites/audio) into the deployment directory if it exists
           if [ -d "assets" ]; then cp -r assets dist/; fi
 
       - name: Create index.html
